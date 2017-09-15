@@ -483,18 +483,17 @@ let c = `ls -l "foo bar"`
     @test eachindex(c) == 1:3
 end
 
-## Deadlock in spawning a cmd (#22832)
-# FIXME?
-#let stdout = Pipe(), stdin = Pipe()
-#    Base.link_pipe(stdout, julia_only_read=true)
-#    Base.link_pipe(stdin, julia_only_write=true)
-#    p = spawn(pipeline(catcmd, stdin=stdin, stdout=stdout, stderr=DevNull))
-#    @async begin # feed cat with 2 MB of data (zeros)
-#        write(stdin, zeros(UInt8, 1048576 * 2))
-#        close(stdin)
-#    end
-#    sleep(0.5) # give cat a chance to fill the write buffer for stdout
-#    close(stdout.in) # make sure we can still close the write end
-#    @test sizeof(readstring(stdout)) == 1048576 * 2 # make sure we get all the data
-#    @test success(p)
-#end
+# Deadlock in spawning a cmd (#22832)
+let stdout = Pipe(), stdin = Pipe()
+    Base.link_pipe(stdout, julia_only_read=true)
+    Base.link_pipe(stdin, julia_only_write=true)
+    p = spawn(pipeline(catcmd, stdin=stdin, stdout=stdout, stderr=DevNull))
+    @async begin # feed cat with 2 MB of data (zeros)
+        write(stdin, zeros(UInt8, 1048576 * 2))
+        close(stdin)
+    end
+    sleep(0.5) # give cat a chance to fill the write buffer for stdout
+    close(stdout.in) # make sure we can still close the write end
+    @test sizeof(readstring(stdout)) == 1048576 * 2 # make sure we get all the data
+    @test success(p)
+end
